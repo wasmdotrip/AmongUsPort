@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
-    <title>Unity WebGL Player | Among Us</title>
+    <title>Among Us</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
   </head>
@@ -16,13 +16,9 @@
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
+        <div id="unity-loading-status" role="status">Downloading game… 0%</div>
       </div>
       <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-webgl-logo"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Among Us</div>
-      </div>
     </div>
     <script>
 
@@ -30,7 +26,7 @@
       var canvas = document.querySelector("#unity-canvas");
       var loadingBar = document.querySelector("#unity-loading-bar");
       var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var loadingStatus = document.querySelector("#unity-loading-status");
       var warningBanner = document.querySelector("#unity-warning");
 
       function unityShowBanner(msg, type) {
@@ -72,6 +68,7 @@
       }
 
       loadingBar.style.display = "block";
+      canvas.style.visibility = "hidden";
 
       var nativeFetch = window.fetch.bind(window);
       var NativeXMLHttpRequest = window.XMLHttpRequest;
@@ -129,16 +126,66 @@
         window.XMLHttpRequest.prototype = NativeXMLHttpRequest.prototype;
       }
 
+      var streamingAssetFiles = [
+        { url: "StreamingAssets/CustomAssetPacksData.json", bytes: 137, type: "application/json" },
+        { url: "StreamingAssets/UnityServicesProjectConfiguration.json", bytes: 1221, type: "application/json" },
+        { url: "StreamingAssets/aa/settings.json", bytes: 844, type: "application/json" },
+        { url: "StreamingAssets/aa/catalog.json", bytes: 1099514, type: "application/json" },
+        { url: "StreamingAssets/aa/AddressablesLink/link.xml", bytes: 28931, type: "application/xml" },
+        { url: "StreamingAssets/aa/WebGL/453b0a9b2ef9b8a4080b2014844ce426_unitybuiltinshaders_2536dfd3f978a44e0658621a7478bc60.bundle", bytes: 56557, type: "application/octet-stream" }
+      ];
+      var downloadTotalBytes = 106373305 + 166806385 + 589939296 +
+        streamingAssetFiles.reduce((sum, file) => sum + file.bytes, 0);
+      var downloadedBytes = 0;
+      var downloadProgressFrame = null;
+      var loadingFailed = false;
+      var preloadAbort = new AbortController();
+      var streamingAssetCache = new Map();
+
+      function showLoadingProgress(progress, message) {
+        progressBarFull.style.width = Math.round(progress * 100) + "%";
+        loadingStatus.textContent = message;
+      }
+
+      function recordDownloadedBytes(bytes) {
+        if (loadingFailed) return;
+        downloadedBytes += bytes;
+        if (downloadProgressFrame !== null) return;
+        downloadProgressFrame = requestAnimationFrame(() => {
+          downloadProgressFrame = null;
+          var progress = Math.min(downloadedBytes / downloadTotalBytes, 1);
+          showLoadingProgress(progress * 0.85, "Downloading game… " + Math.floor(progress * 100) + "%");
+        });
+      }
+
+      async function downloadBlob(url, mimeType) {
+        var response = await nativeFetch(url, { signal: preloadAbort.signal });
+        if (!response.ok) throw new Error("Failed to load " + url + " (HTTP " + response.status + ")");
+        if (!response.body || !response.body.getReader) {
+          var buffer = await response.arrayBuffer();
+          recordDownloadedBytes(buffer.byteLength);
+          return new Blob([buffer], { type: mimeType });
+        }
+        var reader = response.body.getReader();
+        var chunks = [];
+        try {
+          while (true) {
+            var chunk = await reader.read();
+            if (chunk.done) break;
+            chunks.push(chunk.value);
+            recordDownloadedBytes(chunk.value.byteLength);
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        return new Blob(chunks, { type: mimeType });
+      }
+
       async function combinePartsToBlob(baseUrl, partCount, mimeType, partNumberWidth) {
         var responses = await Promise.all(Array.from({ length: partCount }, (_, index) => {
           var partNumber = String(index + 1).padStart(partNumberWidth || 0, "0");
           var partUrl = baseUrl + ".part" + partNumber;
-          return nativeFetch(partUrl).then((response) => {
-            if (!response.ok) {
-              throw new Error("Failed to load " + partUrl + " (HTTP " + response.status + ")");
-            }
-            return response.arrayBuffer();
-          });
+          return downloadBlob(partUrl, mimeType);
         }));
         return new Blob(responses, { type: mimeType });
       }
@@ -149,16 +196,50 @@
       }
 
       var splitBundles = {
-  "defaultlocalgroup_assets__3b418cde0fb1f79ef4bf74d7b77f3e5b.bundle": {
+  "defaultlocalgroup_assets__db69efd6d6015cdfb90e3e77a7544e5b.bundle": {
     partCount: 34,
     partNumberWidth: 2,
     blobPromise: null
   }
 };
 
+      function bundleBlob(baseUrl, splitBundle) {
+        if (!splitBundle.blobPromise) {
+          splitBundle.blobPromise = combinePartsToBlob(
+            baseUrl, splitBundle.partCount, "application/octet-stream", splitBundle.partNumberWidth
+          ).catch((error) => {
+            splitBundle.blobPromise = null;
+            throw error;
+          });
+        }
+        return splitBundle.blobPromise;
+      }
+
+      function blobResponse(blob) {
+        return new Response(blob, {
+          status: 200,
+          headers: { "Content-Type": blob.type, "Content-Length": String(blob.size) }
+        });
+      }
+
+      async function preloadStreamingAssets() {
+        var regularFiles = streamingAssetFiles.map(async (file) => {
+          var url = new URL(file.url, location.href).href;
+          var promise = downloadBlob(url, file.type);
+          streamingAssetCache.set(url, promise);
+          await promise;
+        });
+        var bundles = Object.keys(splitBundles).map((fileName) =>
+          bundleBlob("StreamingAssets/aa/WebGL/" + fileName, splitBundles[fileName])
+        );
+        await Promise.all(regularFiles.concat(bundles));
+      }
+
       window.fetch = function(resource, options) {
-        var requestUrl = typeof resource === "string" ? resource : resource.url;
+        var requestUrl = typeof resource === "string" ? resource : resource instanceof URL ? resource.href : resource.url;
         var cleanUrl = requestUrl.split("?")[0].split("#")[0];
+        var cached = streamingAssetCache.get(new URL(cleanUrl, location.href).href);
+        if (cached) return cached.then(blobResponse);
         var fileName = cleanUrl.substring(cleanUrl.lastIndexOf("/") + 1);
         var splitBundle = splitBundles[fileName];
         if (!splitBundle) {
@@ -166,24 +247,7 @@
           if (rewritten !== requestUrl) return nativeFetch(rewritten, options);
           return nativeFetch(resource, options);
         }
-        if (!splitBundle.blobPromise) {
-          splitBundle.blobPromise = combinePartsToBlob(
-            cleanUrl,
-            splitBundle.partCount,
-            "application/octet-stream",
-            splitBundle.partNumberWidth
-          ).catch((error) => {
-            splitBundle.blobPromise = null;
-            throw error;
-          });
-        }
-        return splitBundle.blobPromise.then((blob) => new Response(blob, {
-          status: 200,
-          headers: {
-            "Content-Type": "application/octet-stream",
-            "Content-Length": String(blob.size)
-          }
-        }));
+        return bundleBlob(cleanUrl, splitBundle).then(blobResponse);
       };
 
       var script = document.createElement("script");
@@ -192,26 +256,29 @@
         try {
           var combinedUrls = await Promise.all([
             combineParts(buildUrl + "/AmongUsWeb.data", 6, "application/octet-stream"),
-            combineParts(buildUrl + "/AmongUsWeb.wasm", 9, "application/wasm")
+            combineParts(buildUrl + "/AmongUsWeb.wasm", 9, "application/wasm"),
+            preloadStreamingAssets()
           ]);
           config.dataUrl = combinedUrls[0];
           config.codeUrl = combinedUrls[1];
-        } catch (error) {
+          if (downloadProgressFrame !== null) {
+            cancelAnimationFrame(downloadProgressFrame);
+            downloadProgressFrame = null;
+          }
+          showLoadingProgress(0.85, "Starting game…");
+          await createUnityInstance(canvas, config, (progress) => {
+            showLoadingProgress(0.85 + progress * 0.15, "Starting game…");
+          });
+          canvas.style.visibility = "visible";
           loadingBar.style.display = "none";
-          unityShowBanner(error.message, "error");
-          return;
+        } catch (error) {
+          loadingFailed = true;
+          preloadAbort.abort();
+          if (downloadProgressFrame !== null) cancelAnimationFrame(downloadProgressFrame);
+          loadingStatus.textContent = "Unable to load game";
+          unityShowBanner(error.message || String(error), "error");
         }
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                loadingBar.style.display = "none";
-                fullscreenButton.onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-              }).catch((message) => {
-                alert(message);
-              });
-            };
+      };
 
       document.body.appendChild(script);
 

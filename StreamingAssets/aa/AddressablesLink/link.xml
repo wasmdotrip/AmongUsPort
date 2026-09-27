@@ -83,9 +83,7 @@
     <type fullname="DeconControl" preserve="all" />
     <type fullname="DeconSystem" preserve="all" />
     <type fullname="DecontamNumController" preserve="all" />
-    <type fullname="DetectiveLocation" preserve="all" />
     <type fullname="DetectiveLocationButton" preserve="all" />
-    <type fullname="DetectiveLocationsController" preserve="all" />
     <type fullname="DiagnosticGame" preserve="all" />
     <type fullname="DialBehaviour" preserve="all" />
     <type fullname="DisableScriptsForJoystick" preserve="all" />
@@ -258,7 +256,6 @@
     <type fullname="SecurityLogger" preserve="all" />
     <type fullname="SensorDoor" preserve="all" />
     <type fullname="ShieldMinigame" preserve="all" />
-    <type fullname="ShipStatus" preserve="all" />
     <type fullname="ShowerMinigame" preserve="all" />
     <type fullname="SimonSaysGame" preserve="all" />
     <type fullname="SkeldExileController" preserve="all" />
@@ -291,10 +288,6 @@
     <type fullname="StoreMannequin" preserve="all" />
     <type fullname="StowArms" preserve="all" />
     <type fullname="StringOption" preserve="all" />
-    <type fullname="Submerged.Elevators.Objects.ElevatorRoomTrackerCollider" preserve="all" />
-    <type fullname="Submerged.HudMap.SubmergedHudMap" preserve="all" />
-    <type fullname="Submerged.Systems.Elevator.ElevatorConsole" preserve="all" />
-    <type fullname="Submerged.Systems.Elevator.SubmarineElevator" preserve="all" />
     <type fullname="SupressorBehaviour" preserve="all" />
     <type fullname="SurvCamera" preserve="all" />
     <type fullname="SurveillanceMinigame" preserve="all" />
@@ -309,11 +302,9 @@
     <type fullname="TelescopeGame" preserve="all" />
     <type fullname="TempMinigame" preserve="all" />
     <type fullname="TestFrisbeeMinigame" preserve="all" />
-    <type fullname="TextLink" preserve="all" />
     <type fullname="TextMarquee" preserve="all" />
     <type fullname="TextRolloverHandler" preserve="all" />
     <type fullname="TextTranslatorTMP" preserve="all" />
-    <type fullname="Tilemap2" preserve="all" />
     <type fullname="ToggleOption" preserve="all" />
     <type fullname="ToiletMinigame" preserve="all" />
     <type fullname="TouchpadBehavior" preserve="all" />
@@ -429,11 +420,9 @@
     <type fullname="UnityEngine.Mesh" preserve="all" />
     <type fullname="UnityEngine.MeshFilter" preserve="all" />
     <type fullname="UnityEngine.MeshRenderer" preserve="all" />
-    <type fullname="UnityEngine.MonoBehaviour" preserve="all" />
     <type fullname="UnityEngine.Object" preserve="all" />
     <type fullname="UnityEngine.RectTransform" preserve="all" />
     <type fullname="UnityEngine.Rendering.SortingGroup" preserve="all" />
-    <type fullname="UnityEngine.RenderTexture" preserve="all" />
     <type fullname="UnityEngine.Shader" preserve="all" />
     <type fullname="UnityEngine.Sprite" preserve="all" />
     <type fullname="UnityEngine.SpriteRenderer" preserve="all" />
