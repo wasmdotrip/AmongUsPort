@@ -127,14 +127,38 @@
       }
 
       var streamingAssetFiles = [
-        { url: "StreamingAssets/CustomAssetPacksData.json", bytes: 137, type: "application/json" },
-        { url: "StreamingAssets/UnityServicesProjectConfiguration.json", bytes: 1221, type: "application/json" },
-        { url: "StreamingAssets/aa/settings.json", bytes: 844, type: "application/json" },
-        { url: "StreamingAssets/aa/catalog.json", bytes: 1099514, type: "application/json" },
-        { url: "StreamingAssets/aa/AddressablesLink/link.xml", bytes: 28931, type: "application/xml" },
-        { url: "StreamingAssets/aa/WebGL/453b0a9b2ef9b8a4080b2014844ce426_unitybuiltinshaders_2536dfd3f978a44e0658621a7478bc60.bundle", bytes: 56557, type: "application/octet-stream" }
-      ];
-      var downloadTotalBytes = 106373305 + 166806385 + 589939296 +
+        {
+                "url": "StreamingAssets/aa/AddressablesLink/link.xml",
+                "bytes": 28931,
+                "type": "application/xml"
+        },
+        {
+                "url": "StreamingAssets/aa/catalog.json",
+                "bytes": 1099514,
+                "type": "application/json"
+        },
+        {
+                "url": "StreamingAssets/aa/settings.json",
+                "bytes": 844,
+                "type": "application/json"
+        },
+        {
+                "url": "StreamingAssets/aa/WebGL/453b0a9b2ef9b8a4080b2014844ce426_unitybuiltinshaders_2536dfd3f978a44e0658621a7478bc60.bundle",
+                "bytes": 56557,
+                "type": "application/octet-stream"
+        },
+        {
+                "url": "StreamingAssets/CustomAssetPacksData.json",
+                "bytes": 137,
+                "type": "application/json"
+        },
+        {
+                "url": "StreamingAssets/UnityServicesProjectConfiguration.json",
+                "bytes": 1131,
+                "type": "application/json"
+        }
+];
+      var downloadTotalBytes = 106373377 + 166806921 + 589939296 +
         streamingAssetFiles.reduce((sum, file) => sum + file.bytes, 0);
       var downloadedBytes = 0;
       var downloadProgressFrame = null;
@@ -159,7 +183,7 @@
       }
 
       async function downloadBlob(url, mimeType) {
-        var response = await nativeFetch(url, { signal: preloadAbort.signal });
+        var response = await nativeFetch(url, { signal: preloadAbort.signal, cache: "no-cache" });
         if (!response.ok) throw new Error("Failed to load " + url + " (HTTP " + response.status + ")");
         if (!response.body || !response.body.getReader) {
           var buffer = await response.arrayBuffer();
